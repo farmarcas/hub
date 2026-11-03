@@ -112,6 +112,8 @@ Abra este contexto ao criar Dockerfile, Compose ou `.env.example`, ou ao subir, 
 | Dockerfile, `docker-compose.yml`, `.env.example`, portas, volumes, healthcheck | `infrastructure/docker/skills/containerization/SKILL.md` | Containerizar serviço, alterar Compose ou criar variáveis de ambiente | O Compose já existir e o pedido for só ligar, desligar ou ver erro |
 | Subir, parar, reiniciar e diagnosticar | `infrastructure/docker/skills/local-environment/SKILL.md` | "Sobe o projeto", "para tudo", serviço fora do ar, porta ocupada, ver logs | O pedido for só escrever Dockerfile ou Compose, sem rodar |
 
+Publicar no Coolify (produção): `infrastructure/docker/COOLIFY.md` e `docker-compose.prod.yml`.
+
 Atalhos equivalentes à skill `local-environment`: `/subir-ambiente` e `/parar-ambiente`.
 
 `containerization` entrega os arquivos. `local-environment` coloca o ambiente no ar e confere saúde. Ao containerizar do zero, faça as duas nessa ordem.
@@ -125,4 +127,4 @@ Estes assuntos ainda não têm procedimento. Se o pedido depender deles, diga is
 - Autenticação, JWT, senha, CORS, rate limit e auditoria de dependências.
 - Teste de rota Python com banco (TestClient). O teste unitário do service Python continua em `python-api-development`.
 - Banco não relacional.
-- Imagem de produção, registry e orquestração fora da máquina local.
+- Registry e orquestração além do Coolify (a imagem de produção e o Compose de produção existem).

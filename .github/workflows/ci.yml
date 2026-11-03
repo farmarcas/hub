@@ -77,3 +77,31 @@ jobs:
       - name: Limpar (runner descartável)
         if: always()
         run: docker compose down -v
+
+  producao:
+    name: Compose de produção (sobe e responde pela tela)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      POSTGRES_USER: hub
+      POSTGRES_PASSWORD: senha-so-de-teste-ci
+      POSTGRES_DB: hub
+    steps:
+      - uses: actions/checkout@v4
+      - name: Subir o Compose de produção
+        run: docker compose -f docker-compose.prod.yml up -d --build --wait
+      - name: Nenhuma porta publicada no host
+        run: |
+          if docker compose -f docker-compose.prod.yml ps --format '{{.Ports}}' | grep -q -- '->'; then
+            echo "porta publicada em produção"; exit 1
+          fi
+      - name: Tela entrega a página e encaminha a API
+        run: |
+          docker compose -f docker-compose.prod.yml exec -T web wget -qO- http://127.0.0.1:8080/ | grep -qi '<html'
+          docker compose -f docker-compose.prod.yml exec -T web wget -qO- http://127.0.0.1:8080/health/ready
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose -f docker-compose.prod.yml logs --tail=200
+      - name: Limpar (runner descartável)
+        if: always()
+        run: docker compose -f docker-compose.prod.yml down -v

@@ -31,6 +31,11 @@ Skills de procedimento (ler depois deste arquivo):
 - Serviços conversam pelo nome do serviço (`postgres`), nunca por `localhost`.
 - Senhas do `.env.example` são só para uso local; nunca usar em produção.
 
+## Produção (Coolify)
+
+- `docker-compose.prod.yml` na raiz: imagens finais (`runtime`), sem bind mounts e sem portas publicadas. Etapa `migrate` roda `prisma migrate deploy` antes da API; `web` serve a tela com nginx (porta 8080) e encaminha `/api` e `/health`.
+- Variáveis só no painel do Coolify (modelo: `.env.production.example`). Passo a passo: [COOLIFY.md](COOLIFY.md).
+
 ## Operações proibidas sem confirmação explícita
 
 Apagam os dados do banco local:

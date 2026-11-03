@@ -36,3 +36,5 @@ infrastructure/docker/
     ├── containerization/SKILL.md
     └── local-environment/SKILL.md
 ```
+
+Publicar no Coolify: [COOLIFY.md](COOLIFY.md).
