@@ -16,6 +16,8 @@ Guia curto. O Hub tem quatro peças no arquivo [docker-compose.prod.yml](../../d
    | `AUTH_MODE` | não | `mock` (único modo hoje) |
 
    Se faltar uma obrigatória, a publicação para e a mensagem diz qual.
+
+   > A senha do banco só vale na **primeira** criação do volume. Trocar `POSTGRES_PASSWORD` depois faz a etapa `migrate` falhar com "Authentication failed" (o banco guardou a senha antiga). Defina a senha definitiva antes do primeiro deploy; para trocar depois, altere-a também dentro do banco (`ALTER USER`) ou recrie o volume (apaga os dados).
 4. No serviço **web**, informe o domínio (ex.: `https://hub.seudominio.com.br`) **com a porta 8080** (`https://hub.seudominio.com.br:8080` na tela do Coolify; o endereço público continua sem porta). O Coolify cuida do HTTPS.
 5. Não publique porta nenhuma dos outros serviços. O banco e a API só conversam dentro do conjunto.
 6. Clique em **Deploy**. Na primeira vez as migrations criam as tabelas sozinhas.
@@ -29,7 +31,7 @@ Publique de novo (ou ligue o deploy automático). A etapa `migrate` aplica mudan
 
 O banco nasce **vazio** e a lista do "Entrar como" vem de pessoas cadastradas; por isso, sem dados ninguém consegue entrar. Para uma demonstração, no terminal do serviço `api` no Coolify rode `npm run db:seed`. Os dados são **fictícios** (ver `backend/node/seeds/`) e não devem ir para um Hub de uso real.
 
-> `npm run db:seed` usa o CLI do Prisma (disponível na imagem de produção). Se o terminal do Coolify não oferecer, rode o SQL do seed pelo `psql` do serviço `postgres`.
+> O comando é seguro de repetir (não duplica os dados).
 
 ## ⚠ Segurança: Hub aberto na internet
 

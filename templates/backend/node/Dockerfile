@@ -27,6 +27,8 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 RUN npm ci --omit=dev && npx prisma generate
 COPY --from=build /app/dist ./dist
+# Seed de exemplo: só roda se alguém executar `npm run db:seed` à mão (ver infrastructure/docker/COOLIFY.md).
+COPY seeds ./seeds
 USER node
 EXPOSE 4000
 HEALTHCHECK CMD wget -qO- http://127.0.0.1:${PORT:-4000}/health/ready || exit 1
