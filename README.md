@@ -34,6 +34,16 @@ O Golden Path é um repositório que ensina a IA a criar aplicações com o padr
 
 Para desligar sem perder os dados: `/parar-ambiente`.
 
+### Hub de Inovação Farmarcas (aplicação deste repositório)
+
+Catálogo das soluções internas, explorado como um globo, com controle de quem vê o quê. Especificação, plano e tarefas em [specs/001-hub-inovacao](specs/001-hub-inovacao/spec.md).
+
+1. Suba o ambiente (`/subir-ambiente`).
+2. Carregue os dados de exemplo do protótipo: `docker compose exec api npm run db:seed` (pode rodar mais de uma vez).
+3. Abra **http://localhost:3000** e use o avatar no rodapé do menu para **Entrar como** uma das 6 pessoas de exemplo. Marina Freitas e Tiago Menezes são admins.
+
+Ainda não há login de verdade: a identificação é simulada (`AUTH_MODE=mock`) até a integração com o Radar, que é uma etapa futura. Autenticação ainda não tem procedimento neste repositório (veja "Lacunas conhecidas" no [AGENTS.md](AGENTS.md)).
+
 ---
 
 ## 🧭 Como criar algo novo

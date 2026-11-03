@@ -10,15 +10,150 @@ datasource db {
 }
 
 // PK: UUIDv7 gerado pela aplicação (decisão documentada em database/DATABASE.md).
-// Exclusão lógica: deleted_at. O e-mail é único só entre registros ativos; esse índice
-// parcial vive no SQL da migration (o Prisma não declara índice parcial no schema).
+// Exclusão lógica: deleted_at. Índices parciais, collation pt_br e CHECKs vivem no SQL
+// das migrations (o Prisma não os declara no schema).
+
+// Usuários vêm do Radar (no MVP, do seed). O Hub não cria nem edita pessoas.
 model User {
   id        String    @id @default(uuid(7)) @db.Uuid
   name      String
   email     String
+  isAdmin   Boolean   @default(false) @map("is_admin")
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  memberships    GroupMember[]
+  solutionAccess SolutionAccessUser[]
+
   @@map("users")
+}
+
+enum GroupType {
+  theme
+  directorate
+
+  @@map("group_type")
+}
+
+model Group {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  type        GroupType
+  name        String
+  description String?
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  members        GroupMember[]
+  solutions      SolutionGroup[]
+  solutionAccess SolutionAccessGroup[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  groupId   String   @map("group_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId], map: "group_members_user_id_idx")
+  @@map("group_members")
+}
+
+model Category {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  solutions Solution[]
+
+  @@map("categories")
+}
+
+enum SolutionStatus {
+  in_review
+  published
+
+  @@map("solution_status")
+}
+
+// Arquivar (archived_at) é reversível e aparece na lista. Excluir (deleted_at) é exclusão lógica:
+// some de todas as telas e não volta pela interface.
+model Solution {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  name        String
+  url         String
+  objective   String
+  description String
+  categoryId  String         @map("category_id") @db.Uuid
+  status      SolutionStatus @default(in_review)
+  accessAll   Boolean        @default(false) @map("access_all")
+  archivedAt  DateTime?      @map("archived_at") @db.Timestamptz(3)
+  deletedAt   DateTime?      @map("deleted_at") @db.Timestamptz(3)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  category     Category              @relation(fields: [categoryId], references: [id])
+  groups       SolutionGroup[]
+  relatedAsA   SolutionRelated[]     @relation("relatedA")
+  relatedAsB   SolutionRelated[]     @relation("relatedB")
+  accessGroups SolutionAccessGroup[]
+  accessUsers  SolutionAccessUser[]
+
+  @@index([categoryId], map: "solutions_category_id_idx")
+  @@map("solutions")
+}
+
+model SolutionGroup {
+  solutionId String @map("solution_id") @db.Uuid
+  groupId    String @map("group_id") @db.Uuid
+
+  solution Solution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([solutionId, groupId])
+  @@index([groupId], map: "solution_groups_group_id_idx")
+  @@map("solution_groups")
+}
+
+// Relação simétrica: um par por linha, sempre com solution_a_id < solution_b_id (CHECK no SQL).
+model SolutionRelated {
+  solutionAId String @map("solution_a_id") @db.Uuid
+  solutionBId String @map("solution_b_id") @db.Uuid
+
+  solutionA Solution @relation("relatedA", fields: [solutionAId], references: [id], onDelete: Cascade)
+  solutionB Solution @relation("relatedB", fields: [solutionBId], references: [id], onDelete: Cascade)
+
+  @@id([solutionAId, solutionBId])
+  @@index([solutionBId], map: "solution_related_solution_b_id_idx")
+  @@map("solution_related")
+}
+
+model SolutionAccessGroup {
+  solutionId String @map("solution_id") @db.Uuid
+  groupId    String @map("group_id") @db.Uuid
+
+  solution Solution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([solutionId, groupId])
+  @@index([groupId], map: "solution_access_groups_group_id_idx")
+  @@map("solution_access_groups")
+}
+
+model SolutionAccessUser {
+  solutionId String @map("solution_id") @db.Uuid
+  userId     String @map("user_id") @db.Uuid
+
+  solution Solution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([solutionId, userId])
+  @@index([userId], map: "solution_access_users_user_id_idx")
+  @@map("solution_access_users")
 }

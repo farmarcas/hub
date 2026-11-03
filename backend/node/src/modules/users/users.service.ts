@@ -1,62 +1,37 @@
-import { ConflictError } from '../../shared/errors/conflict-error.js';
-import { NotFoundError } from '../../shared/errors/not-found-error.js';
-import type { CreateUserInput, UpdateUserInput } from './users.schemas.js';
+import type { GroupTypeValue } from '../../shared/domain/labels.js';
+import { canView, type AccessRule } from '../access/access.service.js';
 
-const USER_NOT_FOUND = 'Usuário não encontrado';
-const EMAIL_ALREADY_EXISTS = 'E-mail já cadastrado';
-
+// Usuários vêm do Radar (no MVP, do seed). O Hub só lê: não cria, não edita, não remove.
 export type UserRecord = {
   id: string;
   name: string;
   email: string;
-  createdAt: Date;
-  updatedAt: Date;
+  isAdmin: boolean;
+  groups: { id: string; name: string; type: GroupTypeValue }[];
 };
 
 export type UsersRepository = {
-  findByEmail: (email: string) => Promise<UserRecord | null>;
-  findById: (id: string) => Promise<UserRecord | null>;
   list: (page: number, pageSize: number) => Promise<{ data: UserRecord[]; total: number }>;
-  create: (input: CreateUserInput) => Promise<UserRecord>;
-  update: (id: string, input: UpdateUserInput) => Promise<UserRecord>;
-  delete: (id: string) => Promise<void>;
+  loadAccessRules: () => Promise<AccessRule[]>;
 };
 
 export const makeUsersService = (repo: UsersRepository) => ({
   async list(page: number, pageSize: number) {
-    const { data, total } = await repo.list(page, pageSize);
-    return { data, meta: { page, pageSize, total } };
-  },
+    const [{ data, total }, rules] = await Promise.all([
+      repo.list(page, pageSize),
+      repo.loadAccessRules(),
+    ]);
 
-  async getById(id: string) {
-    const user = await repo.findById(id);
-    if (!user) throw new NotFoundError(USER_NOT_FOUND, 'USER_NOT_FOUND');
-    return user;
-  },
-
-  async create(input: CreateUserInput) {
-    if (await repo.findByEmail(input.email)) {
-      throw new ConflictError(EMAIL_ALREADY_EXISTS, 'EMAIL_ALREADY_EXISTS');
-    }
-    return repo.create(input);
-  },
-
-  async update(id: string, input: UpdateUserInput) {
-    const current = await repo.findById(id);
-    if (!current) throw new NotFoundError(USER_NOT_FOUND, 'USER_NOT_FOUND');
-
-    if (input.email && input.email !== current.email) {
-      const existing = await repo.findByEmail(input.email);
-      if (existing) throw new ConflictError(EMAIL_ALREADY_EXISTS, 'EMAIL_ALREADY_EXISTS');
-    }
-
-    return repo.update(id, input);
-  },
-
-  async remove(id: string) {
-    const current = await repo.findById(id);
-    if (!current) throw new NotFoundError(USER_NOT_FOUND, 'USER_NOT_FOUND');
-    await repo.delete(id);
+    return {
+      data: data.map((user) => {
+        const viewer = { id: user.id, groupIds: user.groups.map(({ id }) => id) };
+        return {
+          ...user,
+          accessibleSolutionCount: rules.filter((rule) => canView(rule, viewer)).length,
+        };
+      }),
+      meta: { page, pageSize, total },
+    };
   },
 });
 

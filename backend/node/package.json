@@ -13,6 +13,7 @@
     "lint": "eslint . && prettier --check .",
     "test": "vitest run",
     "test:integration": "DATABASE_URL=\"$TEST_DATABASE_URL\" NODE_ENV=test prisma migrate deploy && vitest run --config vitest.integration.config.ts",
+    "db:seed": "prisma db execute --file seeds/20261015120000_hub_prototipo.sql",
     "postinstall": "prisma generate"
   },
   "dependencies": {

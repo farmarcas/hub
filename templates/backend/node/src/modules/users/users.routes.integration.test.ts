@@ -1,73 +1,61 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { app } from '../../app.js';
 import { prisma } from '../../shared/database/prisma.js';
+import { asUser, resetAndSeed, SEED } from '../../test/seed-database.js';
 
-describe('users routes', () => {
-  beforeEach(async () => {
-    await prisma.user.deleteMany();
-  });
+const admin = asUser(SEED.users.marina);
 
+describe('/api/v1/users', () => {
+  beforeAll(resetAndSeed);
   afterAll(async () => {
     await prisma.$disconnect();
   });
 
-  it('deve criar usuário quando dados são válidos', async () => {
-    const response = await request(app)
-      .post('/api/v1/users')
-      .send({ name: 'Ana', email: 'a@a.com' });
-
-    expect(response.status).toBe(201);
-    expect(response.body).toMatchObject({ name: 'Ana', email: 'a@a.com' });
-    expect(response.body.id).toEqual(expect.any(String));
-  });
-
-  it('deve responder 400 quando body é inválido', async () => {
-    const response = await request(app)
-      .post('/api/v1/users')
-      .send({ name: 'A', email: 'nao-email', extra: true });
-
-    expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe('VALIDATION_ERROR');
-  });
-
-  it('deve responder 409 quando e-mail já existe', async () => {
-    await request(app).post('/api/v1/users').send({ name: 'Ana', email: 'a@a.com' });
-
-    const response = await request(app)
-      .post('/api/v1/users')
-      .send({ name: 'Ana', email: 'a@a.com' });
-
-    expect(response.status).toBe(409);
-    expect(response.body.error.code).toBe('EMAIL_ALREADY_EXISTS');
-  });
-
-  it('deve responder 404 quando usuário não existe', async () => {
-    const response = await request(app).get('/api/v1/users/00000000-0000-4000-8000-000000000000');
-
-    expect(response.status).toBe(404);
-    expect(response.body.error.code).toBe('USER_NOT_FOUND');
-  });
-
-  it('deve listar usuários paginados', async () => {
-    await request(app).post('/api/v1/users').send({ name: 'Ana', email: 'a@a.com' });
-
-    const response = await request(app).get('/api/v1/users?page=1&pageSize=20');
+  it('deve listar pessoas com grupos e quantas soluções acessam', async () => {
+    const response = await request(app).get('/api/v1/users').set(admin);
+    const byName = Object.fromEntries(
+      response.body.data.map((user: { name: string; accessibleSolutionCount: number }) => [
+        user.name,
+        user.accessibleSolutionCount,
+      ]),
+    );
 
     expect(response.status).toBe(200);
-    expect(response.body.data).toHaveLength(1);
-    expect(response.body.meta).toEqual({ page: 1, pageSize: 20, total: 1 });
+    expect(response.body.meta.total).toBe(6);
+    expect(byName).toEqual({
+      'Camila Rocha': 5,
+      'Diego Almeida': 8,
+      'Juliana Sato': 9,
+      'Marina Freitas': 9,
+      'Rafael Prado': 6,
+      'Tiago Menezes': 5,
+    });
   });
 
-  it('deve remover usuário quando id existe', async () => {
+  it('não deve permitir criar, editar nem remover pessoas', async () => {
     const created = await request(app)
       .post('/api/v1/users')
-      .send({ name: 'Ana', email: 'a@a.com' });
+      .set(admin)
+      .send({ name: 'Nova', email: 'nova@farmarcas.com.br' });
+    const removed = await request(app).delete(`/api/v1/users/${SEED.users.diego}`).set(admin);
 
-    const removed = await request(app).delete(`/api/v1/users/${created.body.id}`);
-    const fetched = await request(app).get(`/api/v1/users/${created.body.id}`);
+    expect(created.status).toBe(404);
+    expect(removed.status).toBe(404);
+  });
 
-    expect(removed.status).toBe(204);
-    expect(fetched.status).toBe(404);
+  it('deve responder 403 para quem não é admin', async () => {
+    const response = await request(app).get('/api/v1/users').set(asUser(SEED.users.diego));
+
+    expect(response.status).toBe(403);
+  });
+
+  it('deve deixar de contar a solução excluída em "Acessa"', async () => {
+    // Sonar (s8) é para toda a empresa: excluir tira 1 da conta de todo mundo.
+    await request(app).delete(`/api/v1/solutions/${SEED.solutions.s8}`).set(admin);
+    const response = await request(app).get('/api/v1/users').set(admin);
+    const camila = response.body.data.find(({ name }: { name: string }) => name === 'Camila Rocha');
+
+    expect(camila.accessibleSolutionCount).toBe(4);
   });
 });
